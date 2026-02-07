@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "endstone-chatrelay"
+version = "0.1.0"
+description = "Relays chat to a Discord webhook"
+authors = [
+    { name = "niko-at-chalupa"}
+]
+dependencies = [
+    "discord-webhook",
+    "pillow",
+    "PyYAML"
+]
+[project.entry-points."endstone"]
+chatrelay = "endstone_chatrelay:ChatRelay"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/endstone_chatrelay"]

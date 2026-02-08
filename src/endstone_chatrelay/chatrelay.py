@@ -30,6 +30,8 @@ class ChatRelay(Plugin):
         self.logger.info(f"WEBHOOK URL: {self.webhook_url}")
         self.logger.info(f"FONT PATH: {self.font_path}")
 
+        self.last_message = ""
+
     def parse_minecraft(self, msg: str):
         chunks = []
         style = {'color':'#FFFFFF','bold':False,'italic':False,'underline':False,'strike':False}
@@ -159,7 +161,9 @@ class ChatRelay(Plugin):
             except Exception as e:
                 print("ERROR !!!!!!!!!!!!! 😭😭😭 Check following!! 🥺🥺🥺 ", e)
 
-        threading.Thread(target=task, daemon=True).start()
+        if not self.last_message == message:
+            threading.Thread(target=task, daemon=True).start()
+            self.last_message = message
 
     @event_handler
     def on_broadcast_message(self, event: BroadcastMessageEvent):

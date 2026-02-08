@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "endstone-chatrelay"
-version = "0.1.0"
+version = "0.1.1"
 description = "Relays chat to a Discord webhook"
 authors = [
     { name = "niko-at-chalupa"}

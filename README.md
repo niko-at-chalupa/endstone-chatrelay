@@ -4,9 +4,6 @@
 
 </div>
 
-> [!WARNING]
-> This plugin isn't complete, and may be buggy
-
 A small plugin that renders minecraft chat, joins, quits, and deaths as images and sends them to a Discord webhook
 
 It preserves minecraft colors and formatting while keeping text readable

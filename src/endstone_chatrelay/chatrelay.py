@@ -1,25 +1,45 @@
 from endstone.plugin import Plugin
 from endstone.event import event_handler, BroadcastMessageEvent, PlayerDeathEvent, PlayerChatEvent, PlayerJoinEvent, PlayerQuitEvent
 from endstone.lang import Translatable
-
 from pathlib import Path
 import threading
 from discord_webhook import DiscordWebhook
 from PIL import Image, ImageDraw, ImageFont
-import yaml
 import re
 import time
 from typing import cast
+from ruamel.yaml import YAML
+from ruamel.yaml.comments import CommentedMap 
 
 class ChatRelay(Plugin):
     def install(self):
         folder = Path(self.data_folder)
         folder.mkdir(parents=True, exist_ok=True)
         cfg_path = folder / "config.yml"
-        if not cfg_path.exists():
-            cfg_path.write_text("webhook_url: ''\nfont_path: ''\n", encoding="utf-8")
-        with open(cfg_path, "r", encoding="utf-8") as f:
-            self.yaml_config = yaml.safe_load(f)
+        self.yml = YAML()
+        self.yml.preserve_quotes = True
+        defaults = [
+            ("webhook_url", "", "Discord webhook URL"),
+            ("font_path", "", "Path to custom font file"),
+            #("player_message_type", "image", 'ONLY applies to player messages. Options: "image" | "plaintext"'),
+        ]
+        if cfg_path.exists():
+            with open(cfg_path, "r", encoding="utf-8") as f:
+                existing = self.yml.load(f)
+            if not isinstance(existing, CommentedMap):
+                existing = CommentedMap(existing or {})
+        else:
+            existing = CommentedMap()
+
+        for key, default, comment in defaults:
+            if key not in existing:
+                existing[key] = default
+                existing.yaml_add_eol_comment(comment, key)
+
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            self.yml.dump(existing, f)
+
+        self.yaml_config = dict(existing)
 
     def on_enable(self):
         self.install()
@@ -85,13 +105,19 @@ class ChatRelay(Plugin):
         if buf: chunks.append((buf, style.copy()))
         return chunks
 
+    def remove_mentions(self, message: str) -> str:
+        text = re.sub(r'@everyone', 'Everyone', message)
+        text = re.sub(r'@here', 'Here', text)
+        text = re.sub(r'@(\w+)', r'\1', text)
+        return text
+
     def render_and_send(self, message: str):
         def task():
             try:
                 if len(message) > 100:
                     DiscordWebhook(
                         url=self.webhook_url,
-                        content=message,
+                        content=self.remove_mentions(message=message),
                     ).execute()
                     return
 

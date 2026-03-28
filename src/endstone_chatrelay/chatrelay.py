@@ -52,9 +52,9 @@ class ChatRelay(Plugin):
         self.font_path = cast(str, self.yaml_config.get("font_path"))
         if not self.webhook_url or not self.font_path:
             self.logger.error("Chatrelay will NOT function! Fill out both `webhook_url` and `font_path` before reloading the plugin.")
-
-        self.register_events(self)
-
+        else:
+            self.register_events(self)
+        
         self.last_message = ""
 
     def parse_minecraft(self, msg: str):

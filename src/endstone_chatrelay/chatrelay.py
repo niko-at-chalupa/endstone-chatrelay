@@ -187,6 +187,12 @@ class ChatRelay(Plugin):
 
             time.sleep(1)
 
+    def _warn(self, message: str):
+        """
+        Used because logging must be done on the main thread to be visible.
+        """
+        self.server.scheduler.run_task(self, lambda: self.logger.warning(message))
+
     def send_player_message(self, message: str):
         if message == "":
             return
@@ -202,7 +208,7 @@ class ChatRelay(Plugin):
                     ).execute()
                 else:
                     if not self.yaml_config.get("other_messages_type"):
-                        self.logger.warning(f'Message "{message}" was not sent because your config has an invalid option.')
+                        self._warn(f'Message "{message}" was not sent because your config has an invalid option.')
             except Exception as e:
                 print("ERROR !!!!!!!!!!!!! 😭😭😭 Check following!! 🥺🥺🥺 ", e)
         if not self.last_message == message:
@@ -224,7 +230,7 @@ class ChatRelay(Plugin):
                     ).execute()
                 else:
                     if not self.yaml_config.get("other_messages_type"):
-                        self.logger.warning(f'Message "{message}" was not sent because your config has an invalid option.')
+                        self._warn(f'Message "{message}" was not sent because your config has an invalid option.')
             except Exception as e:
                 print("ERROR !!!!!!!!!!!!! 😭😭😭 Check following!! 🥺🥺🥺 ", e)
         if not self.last_message == message:
@@ -246,7 +252,7 @@ class ChatRelay(Plugin):
                     ).execute()
                 else:
                     if not self.yaml_config.get("other_messages_type"):
-                        self.logger.warning(f'Message "{message}" was not sent because your config has an invalid option.')
+                        self._warn(f'Message "{message}" was not sent because your config has an invalid option.')
             except Exception as e:
                 print("ERROR !!!!!!!!!!!!! 😭😭😭 Check following!! 🥺🥺🥺 ", e)
         if not self.last_message == message:

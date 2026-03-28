@@ -187,10 +187,35 @@ class ChatRelay(Plugin):
 
             time.sleep(1)
 
+    def _resolve_to_plaintext(self, message: str) -> str:
+        msg = re.sub(r'[\x00-\x1f\x7f]', '', message)
+        segments = re.split(r'§[a-z0-9]', msg)
+        codes = ["n"] + re.findall(r'§([a-z0-9])', msg)
+        state = {"l": False, "o": False}
+        parsed = []
+        for c, t in zip(codes, segments):
+            if c == "r": state = {"l": False, "o": False}
+            elif c == "l": state["l"] = True
+            elif c == "o": state["o"] = True
+            wrap = "***" if state["l"] and state["o"] else "**" if state["l"] else "_" if state["o"] else ""
+            parsed.append((re.sub(r'([*_\\])', r'\\\1', t), wrap))
+        result = ""
+        for text, wrap in parsed:
+            if wrap:
+                stripped = text.strip()
+                leading = text[:len(text) - len(text.lstrip())]
+                trailing = text[len(text.rstrip()):]
+                result += leading + wrap + stripped + wrap + trailing
+            else:
+                result += text
+        # KILL me
+        return result
+
     def _send_as_plaintext(self, message: str):
+        print(message)
         DiscordWebhook(
             url=self.webhook_url,
-            content=re.sub(r'§.', '', self.remove_mentions(message)),
+            content=self.remove_mentions(self._resolve_to_plaintext(message=message))
         ).execute()
 
     def _warn(self, message: str):

@@ -205,8 +205,7 @@ class ChatRelay(Plugin):
     def resolve_message(self, message: str | Translatable | None) -> str:
         if not message: return ""
         elif isinstance(message, Translatable):
-            message = str(message.text) 
-            message = self.server.language.translate(message, locale=self.server.language.locale, params=message.params) 
+            message = self.server.language.translate(str(message.text), locale=self.server.language.locale, params=message.params) 
         else: 
             message = str(message)
         # if it's None: return, if it's a translateable: translate into server's locale

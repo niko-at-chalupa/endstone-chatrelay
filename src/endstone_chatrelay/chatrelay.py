@@ -197,7 +197,7 @@ class ChatRelay(Plugin):
         if message == "":
             return
         def task():
-            message_type = cast(str, self.yaml_config.get("'player_message_type'", "image"))
+            message_type = cast(str, self.yaml_config.get("player_message_type", "image"))
             try:
                 if message_type == "image":
                     self._send_as_image(message=message)
@@ -219,7 +219,7 @@ class ChatRelay(Plugin):
         if message == "":
             return
         def task():
-            message_type = cast(str, self.yaml_config.get("'join_or_leave_message_type'", "image"))
+            message_type = cast(str, self.yaml_config.get("join_or_leave_message_type", "image"))
             try:
                 if message_type == "image":
                     self._send_as_image(message=message)
@@ -241,7 +241,7 @@ class ChatRelay(Plugin):
         if message == "":
             return
         def task():
-            message_type = cast(str, self.yaml_config.get("'other_messages_type'", "image"))
+            message_type = cast(str, self.yaml_config.get("other_messages_type", "image"))
             try:
                 if message_type == "image":
                     self._send_as_image(message=message)

@@ -17,11 +17,15 @@ class ChatRelay(Plugin):
         folder.mkdir(parents=True, exist_ok=True)
         cfg_path = folder / "config.yml"
         self.yml = YAML()
+        self.yml.version = (1, 2)
         self.yml.preserve_quotes = True
         defaults = [
             ("webhook_url", "", "Discord webhook URL"),
             ("font_path", "", "Path to custom font file"),
-            ("player_message_type", "image", 'ONLY applies to player messages. Options: "image" | "plaintext"'),
+            ("player_message_type", "'image'", 'ONLY applies to player messages. Options: "image" | "plaintext". Use any other option to not send these messages at all.'),
+            ("join_or_leave_message_type", "'image'", 'ONLY applies to join/leave messages. Options: "image" | "plaintext". Use any other option to not send these messages at all.'),
+            ("other_messages_type", "'image'", 'ONLY applies to messages not listed beforehand (death messages, broadcasted messages...). Options: "image" | "plaintext". Use any other option to not send these messages at all.'),
+            ("show_warning_on_bad_config_value", "false", "Weather to log warnings if a key is wrong. Certain keys (like the three before this one) let you use an invalid option for some special functionality.")
         ]
         if cfg_path.exists():
             with open(cfg_path, "r", encoding="utf-8") as f:
@@ -183,11 +187,11 @@ class ChatRelay(Plugin):
 
             time.sleep(1)
 
-    def send(self, message: str):
+    def send_player_message(self, message: str):
         if message == "":
             return
         def task():
-            message_type = cast(str, self.yaml_config.get("player_message_type", "image"))
+            message_type = cast(str, self.yaml_config.get("'player_message_type'", "image"))
             try:
                 if message_type == "image":
                     self._send_as_image(message=message)
@@ -196,9 +200,55 @@ class ChatRelay(Plugin):
                         url=self.webhook_url,
                         content=self.remove_mentions(message=message),
                     ).execute()
+                else:
+                    if not self.yaml_config.get("other_messages_type"):
+                        self.logger.warning(f'Message "{message}" was not sent because your config has an invalid option.')
             except Exception as e:
                 print("ERROR !!!!!!!!!!!!! 😭😭😭 Check following!! 🥺🥺🥺 ", e)
+        if not self.last_message == message:
+            threading.Thread(target=task, daemon=True).start()
+            self.last_message = message
 
+    def send_join_or_leave_message(self, message: str):
+        if message == "":
+            return
+        def task():
+            message_type = cast(str, self.yaml_config.get("'join_or_leave_message_type'", "image"))
+            try:
+                if message_type == "image":
+                    self._send_as_image(message=message)
+                elif message_type == "plaintext": 
+                    DiscordWebhook(
+                        url=self.webhook_url,
+                        content=self.remove_mentions(message=message),
+                    ).execute()
+                else:
+                    if not self.yaml_config.get("other_messages_type"):
+                        self.logger.warning(f'Message "{message}" was not sent because your config has an invalid option.')
+            except Exception as e:
+                print("ERROR !!!!!!!!!!!!! 😭😭😭 Check following!! 🥺🥺🥺 ", e)
+        if not self.last_message == message:
+            threading.Thread(target=task, daemon=True).start()
+            self.last_message = message
+
+    def send_other_message(self, message: str):
+        if message == "":
+            return
+        def task():
+            message_type = cast(str, self.yaml_config.get("'other_messages_type'", "image"))
+            try:
+                if message_type == "image":
+                    self._send_as_image(message=message)
+                elif message_type == "plaintext": 
+                    DiscordWebhook(
+                        url=self.webhook_url,
+                        content=self.remove_mentions(message=message),
+                    ).execute()
+                else:
+                    if not self.yaml_config.get("other_messages_type"):
+                        self.logger.warning(f'Message "{message}" was not sent because your config has an invalid option.')
+            except Exception as e:
+                print("ERROR !!!!!!!!!!!!! 😭😭😭 Check following!! 🥺🥺🥺 ", e)
         if not self.last_message == message:
             threading.Thread(target=task, daemon=True).start()
             self.last_message = message
@@ -211,6 +261,8 @@ class ChatRelay(Plugin):
             message = str(message)
         # if it's None: return, if it's a translateable: translate into server's locale
         return message
+
+
 
     @event_handler
     def on_broadcast_message(self, event: BroadcastMessageEvent):
@@ -225,14 +277,15 @@ class ChatRelay(Plugin):
     @event_handler
     def on_player_chat(self, event: PlayerChatEvent):
         message = f"<{event.player.name}> {event.message}"
-        self.send(message)
+        self.send_player_message(message)
+
 
     @event_handler
     def on_player_join(self, event: PlayerJoinEvent):
         message = self.resolve_message(event.join_message)
-        self.send(message)
+        self.send_join_or_leave_message(message)
     
     @event_handler
     def on_player_quit(self, event: PlayerQuitEvent):
         message = self.resolve_message(event.quit_message)
-        self.send(message)
+        self.send_join_or_leave_message(message)

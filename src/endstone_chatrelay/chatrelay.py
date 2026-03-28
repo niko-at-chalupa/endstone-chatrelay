@@ -21,7 +21,7 @@ class ChatRelay(Plugin):
         defaults = [
             ("webhook_url", "", "Discord webhook URL"),
             ("font_path", "", "Path to custom font file"),
-            #("player_message_type", "image", 'ONLY applies to player messages. Options: "image" | "plaintext"'),
+            ("player_message_type", "image", 'ONLY applies to player messages. Options: "image" | "plaintext"'),
         ]
         if cfg_path.exists():
             with open(cfg_path, "r", encoding="utf-8") as f:
@@ -111,79 +111,88 @@ class ChatRelay(Plugin):
         text = re.sub(r'@(\w+)', r'\1', text)
         return text
 
-    def render_and_send(self, message: str):
-        def task():
+    def _send_as_image(self, message: str):
+        if len(message) > 100:
+            DiscordWebhook(
+                url=self.webhook_url,
+                content=self.remove_mentions(message=message),
+            ).execute()
+            return
+
+        chunks = self.parse_minecraft(message)
+
+        max_width, max_height, padding = 512, 30, 5
+        font = ImageFont.truetype(self.font_path, max_height)
+
+        lines = []
+        current_line = []
+        current_width = 0
+
+        def text_width(t: str):
+            bbox = font.getbbox(t)
+            return bbox[2] - bbox[0]
+
+        for text, style in chunks:
+            parts = re.split(r"( )", text)
+            for part in parts:
+                w = text_width(part)
+                if current_width + w + padding * 2 > max_width and current_line:
+                    lines.append(current_line)
+                    current_line = []
+                    current_width = 0
+                current_line.append((part, style))
+                current_width += w
+
+        if current_line:
+            lines.append(current_line)
+
+        folder = Path(self.data_folder, "htmlrendertext")
+        folder.mkdir(exist_ok=True)
+
+        for line in lines:
+            img = Image.new("RGBA", (max_width, max_height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+
+            sample_text = "".join(t for t, _ in line)
+            bbox = font.getbbox(sample_text)
+            y = (max_height - (bbox[3] - bbox[1])) // 2
+
+            x = padding
+            for text, style in line:
+                color = tuple(int(style["color"][i:i+2], 16) for i in (1, 3, 5)) + (255,)
+                draw.text((x, y), text, font=font, fill=color)
+                x += text_width(text)
+
+            png_path = folder / f"mc_render_{int(time.time()*1000)}.png"
+            img.save(png_path)
+
+            with open(png_path, "rb") as f:
+                data = f.read()
+
+            DiscordWebhook(
+                url=self.webhook_url,
+                content=" ",
+                files={png_path.name: (png_path.name, data)},
+            ).execute()
+
             try:
-                if len(message) > 100:
+                png_path.unlink()
+            except:
+                pass
+
+            time.sleep(1)
+
+    def send(self, message: str):
+        def task():
+            message_type = self.config.get("player_message_type", "image")
+            try:
+                if message_type == "image":
+                    self._send_as_image(message=message)
+                elif message_type == "plaintext": 
                     DiscordWebhook(
                         url=self.webhook_url,
                         content=self.remove_mentions(message=message),
                     ).execute()
-                    return
-
-                chunks = self.parse_minecraft(message)
-
-                max_width, max_height, padding = 512, 30, 5
-                font = ImageFont.truetype(self.font_path, max_height)
-
-                lines = []
-                current_line = []
-                current_width = 0
-
-                def text_width(t: str):
-                    bbox = font.getbbox(t)
-                    return bbox[2] - bbox[0]
-
-                for text, style in chunks:
-                    parts = re.split(r"( )", text)
-                    for part in parts:
-                        w = text_width(part)
-                        if current_width + w + padding * 2 > max_width and current_line:
-                            lines.append(current_line)
-                            current_line = []
-                            current_width = 0
-                        current_line.append((part, style))
-                        current_width += w
-
-                if current_line:
-                    lines.append(current_line)
-
-                folder = Path(self.data_folder, "htmlrendertext")
-                folder.mkdir(exist_ok=True)
-
-                for line in lines:
-                    img = Image.new("RGBA", (max_width, max_height), (0, 0, 0, 0))
-                    draw = ImageDraw.Draw(img)
-
-                    sample_text = "".join(t for t, _ in line)
-                    bbox = font.getbbox(sample_text)
-                    y = (max_height - (bbox[3] - bbox[1])) // 2
-
-                    x = padding
-                    for text, style in line:
-                        color = tuple(int(style["color"][i:i+2], 16) for i in (1, 3, 5)) + (255,)
-                        draw.text((x, y), text, font=font, fill=color)
-                        x += text_width(text)
-
-                    png_path = folder / f"mc_render_{int(time.time()*1000)}.png"
-                    img.save(png_path)
-
-                    with open(png_path, "rb") as f:
-                        data = f.read()
-
-                    DiscordWebhook(
-                        url=self.webhook_url,
-                        content=" ",
-                        files={png_path.name: (png_path.name, data)},
-                    ).execute()
-
-                    try:
-                        png_path.unlink()
-                    except:
-                        pass
-
-                    time.sleep(1)
-
             except Exception as e:
                 print("ERROR !!!!!!!!!!!!! 😭😭😭 Check following!! 🥺🥺🥺 ", e)
 
@@ -201,7 +210,7 @@ class ChatRelay(Plugin):
             message = str(event.message)
         # if it's None: return, if it's a translateable: translate into server's locale
 
-        self.render_and_send(message)
+        self.send(message)
 
     @event_handler
     def on_player_death(self, event: PlayerDeathEvent):
@@ -212,12 +221,12 @@ class ChatRelay(Plugin):
         else: 
             message = str(event.death_message)
         # if it's None: return, if it's a translateable: translate into server's locale
-        self.render_and_send(message)
+        self.send(message)
 
     @event_handler
     def on_player_chat(self, event: PlayerChatEvent):
         message = f"<{event.player.name}> {event.message}"
-        self.render_and_send(message)
+        self.send(message)
 
     @event_handler
     def on_player_join(self, event: PlayerJoinEvent):
@@ -228,7 +237,7 @@ class ChatRelay(Plugin):
         else:
             message = str(event.join_message)
         # if it's None: return, if it's a translateable: translate into server's locale
-        self.render_and_send(message)
+        self.send(message)
     
     @event_handler
     def on_player_quit(self, event: PlayerQuitEvent):
@@ -239,4 +248,4 @@ class ChatRelay(Plugin):
         else:
             message = str(event.quit_message)
         # if it's None: return, if it's a translateable: translate into server's locale
-        self.render_and_send(message)
+        self.send(message)

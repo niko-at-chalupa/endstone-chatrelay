@@ -183,6 +183,8 @@ class ChatRelay(Plugin):
             time.sleep(1)
 
     def send(self, message: str):
+        if message == "":
+            return
         def task():
             message_type = self.config.get("player_message_type", "image")
             try:
@@ -200,27 +202,24 @@ class ChatRelay(Plugin):
             threading.Thread(target=task, daemon=True).start()
             self.last_message = message
 
+    def resolve_message(self, message: str | Translatable | None) -> str:
+        if not message: return ""
+        elif isinstance(message, Translatable):
+            message = str(message.text) 
+            message = self.server.language.translate(message, locale=self.server.language.locale, params=message.params) 
+        else: 
+            message = str(message)
+        # if it's None: return, if it's a translateable: translate into server's locale
+        return message
+
     @event_handler
     def on_broadcast_message(self, event: BroadcastMessageEvent):
-        if not event.message: return 
-        elif isinstance(event.message, Translatable):
-            message = str(event.message.text) 
-            message = self.server.language.translate(message, locale=self.server.language.locale, params=event.message.params) 
-        else: 
-            message = str(event.message)
-        # if it's None: return, if it's a translateable: translate into server's locale
-
+        message = self.resolve_message(event.message)
         self.send(message)
 
     @event_handler
     def on_player_death(self, event: PlayerDeathEvent):
-        if not event.death_message: return 
-        elif isinstance(event.death_message, Translatable):
-            message = str(event.death_message.text) 
-            message = self.server.language.translate(message, locale=self.server.language.locale, params=event.death_message.params) 
-        else: 
-            message = str(event.death_message)
-        # if it's None: return, if it's a translateable: translate into server's locale
+        message = self.resolve_message(event.death_message)
         self.send(message)
 
     @event_handler
@@ -230,22 +229,10 @@ class ChatRelay(Plugin):
 
     @event_handler
     def on_player_join(self, event: PlayerJoinEvent):
-        if not event.join_message: return 
-        elif isinstance(event.join_message, Translatable):
-            message = str(event.join_message.text) 
-            message = self.server.language.translate(message, locale=self.server.language.locale, params=event.join_message.params) 
-        else:
-            message = str(event.join_message)
-        # if it's None: return, if it's a translateable: translate into server's locale
+        message = self.resolve_message(event.join_message)
         self.send(message)
     
     @event_handler
     def on_player_quit(self, event: PlayerQuitEvent):
-        if not event.quit_message: return 
-        elif isinstance(event.quit_message, Translatable):
-            message = str(event.quit_message.text) 
-            message = self.server.language.translate(message, locale=self.server.language.locale, params=event.quit_message.params) 
-        else:
-            message = str(event.quit_message)
-        # if it's None: return, if it's a translateable: translate into server's locale
+        message = self.resolve_message(event.quit_message)
         self.send(message)

@@ -43,12 +43,13 @@ class ChatRelay(Plugin):
 
     def on_enable(self):
         self.install()
+
         self.webhook_url = cast(str, self.yaml_config.get("webhook_url"))
         self.font_path = cast(str, self.yaml_config.get("font_path"))
-        self.register_events(self)
+        if not self.webhook_url or not self.font_path:
+            self.logger.error("Chatrelay will NOT function! Fill out both `webhook_url` and `font_path` before reloading the plugin.")
 
-        self.logger.info(f"WEBHOOK URL: {self.webhook_url}")
-        self.logger.info(f"FONT PATH: {self.font_path}")
+        self.register_events(self)
 
         self.last_message = ""
 
@@ -186,7 +187,7 @@ class ChatRelay(Plugin):
         if message == "":
             return
         def task():
-            message_type = self.config.get("player_message_type", "image")
+            message_type = cast(str, self.yaml_config.get("player_message_type", "image"))
             try:
                 if message_type == "image":
                     self._send_as_image(message=message)

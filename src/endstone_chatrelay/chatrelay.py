@@ -267,12 +267,12 @@ class ChatRelay(Plugin):
     @event_handler
     def on_broadcast_message(self, event: BroadcastMessageEvent):
         message = self.resolve_message(event.message)
-        self.send(message)
+        self.send_other_message(message)
 
     @event_handler
     def on_player_death(self, event: PlayerDeathEvent):
         message = self.resolve_message(event.death_message)
-        self.send(message)
+        self.send_other_message(message)
 
     @event_handler
     def on_player_chat(self, event: PlayerChatEvent):

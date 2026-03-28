@@ -22,9 +22,9 @@ class ChatRelay(Plugin):
         defaults = [
             ("webhook_url", "", "Discord webhook URL"),
             ("font_path", "", "Path to custom font file"),
-            ("player_message_type", "image", 'ONLY applies to player messages. Options: "image" | "plaintext". Use any other option to not send these messages at all.'),
-            ("join_or_leave_message_type", "image", 'ONLY applies to join/leave messages. Options: "image" | "plaintext". Use any other option to not send these messages at all.'),
-            ("other_messages_type", "image", 'ONLY applies to messages not listed beforehand (death messages, broadcasted messages...). Options: "image" | "plaintext". Use any other option to not send these messages at all.'),
+            ("player_message_type", "image", 'ONLY applies to player messages. Options: image | plaintext | . Use any other option to not send these messages at all.'),
+            ("join_or_leave_message_type", "image", 'ONLY applies to join/leave messages. Options: image | plaintext. Use any other option to not send these messages at all.'),
+            ("other_messages_type", "image", 'ONLY applies to messages not listed beforehand (death messages, broadcasted messages...). Options: image | "plaintext. Use any other option to not send these messages at all.'),
             ("show_warning_on_bad_config_value", False, "Weather to log warnings if a key is wrong. Certain keys (like the three before this one) let you use an invalid option for some special functionality.")
         ]
         if cfg_path.exists():
@@ -54,6 +54,7 @@ class ChatRelay(Plugin):
             self.logger.error("Chatrelay will NOT function! Fill out both `webhook_url` and `font_path` before reloading the plugin.")
         else:
             self.register_events(self)
+        self.logger.info("If your config is bad, delete it and Chatrelay will make a new one for you.")
         
         self.last_message = ""
 

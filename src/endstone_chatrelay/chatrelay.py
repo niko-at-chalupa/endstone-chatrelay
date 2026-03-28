@@ -187,6 +187,12 @@ class ChatRelay(Plugin):
 
             time.sleep(1)
 
+    def _send_as_plaintext(self, message: str):
+        DiscordWebhook(
+            url=self.webhook_url,
+            content=re.sub(r'§.', '', self.remove_mentions(message)),
+        ).execute()
+
     def _warn(self, message: str):
         """
         Used because logging must be done on the main thread to be visible.
@@ -202,10 +208,7 @@ class ChatRelay(Plugin):
                 if message_type == "image":
                     self._send_as_image(message=message)
                 elif message_type == "plaintext": 
-                    DiscordWebhook(
-                        url=self.webhook_url,
-                        content=self.remove_mentions(message=message),
-                    ).execute()
+                    self._send_as_plaintext(message=message)
                 else:
                     if not self.yaml_config.get("other_messages_type"):
                         self._warn(f'Message "{message}" was not sent because your config has an invalid option.')
@@ -224,10 +227,7 @@ class ChatRelay(Plugin):
                 if message_type == "image":
                     self._send_as_image(message=message)
                 elif message_type == "plaintext": 
-                    DiscordWebhook(
-                        url=self.webhook_url,
-                        content=self.remove_mentions(message=message),
-                    ).execute()
+                    self._send_as_plaintext(message=message)
                 else:
                     if not self.yaml_config.get("other_messages_type"):
                         self._warn(f'Message "{message}" was not sent because your config has an invalid option.')
@@ -246,10 +246,7 @@ class ChatRelay(Plugin):
                 if message_type == "image":
                     self._send_as_image(message=message)
                 elif message_type == "plaintext": 
-                    DiscordWebhook(
-                        url=self.webhook_url,
-                        content=self.remove_mentions(message=message),
-                    ).execute()
+                    self._send_as_plaintext(message=message)
                 else:
                     if not self.yaml_config.get("other_messages_type"):
                         self._warn(f'Message "{message}" was not sent because your config has an invalid option.')

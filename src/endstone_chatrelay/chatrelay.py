@@ -3,7 +3,7 @@ from endstone.event import event_handler, BroadcastMessageEvent, PlayerDeathEven
 from endstone.lang import Translatable
 from pathlib import Path
 import threading
-from discord_webhook import DiscordWebhook
+from discord_webhook import DiscordWebhook, DiscordEmbed
 from PIL import Image, ImageDraw, ImageFont
 import re
 import time
@@ -22,10 +22,10 @@ class ChatRelay(Plugin):
         defaults = [
             ("webhook_url", "", "Discord webhook URL"),
             ("font_path", "", "Path to custom font file"),
-            ("player_message_type", "image", 'ONLY applies to player messages. Options: image | plaintext | . Use any other option to not send these messages at all.'),
-            ("join_or_leave_message_type", "image", 'ONLY applies to join/leave messages. Options: image | plaintext. Use any other option to not send these messages at all.'),
-            ("other_messages_type", "image", 'ONLY applies to messages not listed beforehand (death messages, broadcasted messages...). Options: image | "plaintext. Use any other option to not send these messages at all.'),
-            ("show_warning_on_bad_config_value", False, "Weather to log warnings if a key is wrong. Certain keys (like the three before this one) let you use an invalid option for some special functionality.")
+            ("player_message_type", "image", 'ONLY applies to player messages. Options: image | plaintext | embed. Use any other option to not send these messages at all.'),
+            ("join_or_leave_message_type", "image", 'ONLY applies to join/leave messages. Options: image | plaintext | embed. Use any other option to not send these messages at all.'),
+            ("other_messages_type", "image", 'ONLY applies to messages not listed beforehand (death messages, broadcasted messages...). Options: image | "plaintext | embed. Use any other option to not send these messages at all.'),
+            ("show_warning_on_bad_config_value", False, "Weather to log warnings if a key is wrong. Certain keys (like the three before this one) let you use an invalid option for some special functionality."),
         ]
         if cfg_path.exists():
             with open(cfg_path, "r", encoding="utf-8") as f:
@@ -154,6 +154,7 @@ class ChatRelay(Plugin):
 
         folder = Path(self.data_folder, "htmlrendertext")
         folder.mkdir(exist_ok=True)
+        
 
         for line in lines:
             img = Image.new("RGBA", (max_width, max_height), (0, 0, 0, 0))
@@ -219,13 +220,22 @@ class ChatRelay(Plugin):
             content=self.remove_mentions(self._resolve_to_plaintext(message=message))
         ).execute()
 
+    def _send_as_embed(self, message: str, player: str = ""):
+        plain = self.remove_mentions(self._resolve_to_plaintext(message=message))
+        embed = DiscordEmbed(description=plain)
+        if player:
+            embed.set_author(name=player, icon_url=f"https://mc-heads.net/avatar/{player}/64")
+        webhook = DiscordWebhook(url=self.webhook_url)
+        webhook.add_embed(embed)
+        webhook.execute()
+
     def _warn(self, message: str):
         """
         Used because logging must be done on the main thread to be visible.
         """
         self.server.scheduler.run_task(self, lambda: self.logger.warning(message))
 
-    def send_player_message(self, message: str):
+    def send_player_message(self, message: str, player: str = ""):
         if message == "":
             return
         def task():
@@ -235,6 +245,8 @@ class ChatRelay(Plugin):
                     self._send_as_image(message=message)
                 elif message_type == "plaintext": 
                     self._send_as_plaintext(message=message)
+                elif message_type == "embed":
+                    self._send_as_embed(message=message, player=player)
                 else:
                     if not self.yaml_config.get("other_messages_type"):
                         self._warn(f'Message "{message}" was not sent because your config has an invalid option.')
@@ -244,7 +256,7 @@ class ChatRelay(Plugin):
             threading.Thread(target=task, daemon=True).start()
             self.last_message = message
 
-    def send_join_or_leave_message(self, message: str):
+    def send_join_or_leave_message(self, message: str, player: str = ""):
         if message == "":
             return
         def task():
@@ -254,6 +266,8 @@ class ChatRelay(Plugin):
                     self._send_as_image(message=message)
                 elif message_type == "plaintext": 
                     self._send_as_plaintext(message=message)
+                elif message_type == "embed":
+                    self._send_as_embed(message=message, player=player)
                 else:
                     if not self.yaml_config.get("other_messages_type"):
                         self._warn(f'Message "{message}" was not sent because your config has an invalid option.')
@@ -273,6 +287,8 @@ class ChatRelay(Plugin):
                     self._send_as_image(message=message)
                 elif message_type == "plaintext": 
                     self._send_as_plaintext(message=message)
+                elif message_type == "embed":
+                    self._send_as_embed(message=message)
                 else:
                     if not self.yaml_config.get("other_messages_type"):
                         self._warn(f'Message "{message}" was not sent because your config has an invalid option.')
@@ -306,15 +322,15 @@ class ChatRelay(Plugin):
     @event_handler
     def on_player_chat(self, event: PlayerChatEvent):
         message = f"<{event.player.name}> {event.message}"
-        self.send_player_message(message)
+        self.send_player_message(message, player=event.player.name)
 
 
     @event_handler
     def on_player_join(self, event: PlayerJoinEvent):
         message = self.resolve_message(event.join_message)
-        self.send_join_or_leave_message(message)
+        self.send_join_or_leave_message(message, player=event.player.name)
     
     @event_handler
     def on_player_quit(self, event: PlayerQuitEvent):
         message = self.resolve_message(event.quit_message)
-        self.send_join_or_leave_message(message)
+        self.send_join_or_leave_message(message, player=event.player.name)

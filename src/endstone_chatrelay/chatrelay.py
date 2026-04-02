@@ -27,6 +27,16 @@ class ChatRelay(Plugin):
             ("join_or_leave_message_type", "image", 'ONLY applies to join/leave messages. Options: image | plaintext | embed. Use any other option to not send these messages at all.'),
             ("other_messages_type", "image", 'ONLY applies to messages not listed beforehand (death messages, broadcasted messages...). Options: image | "plaintext | embed. Use any other option to not send these messages at all.'),
             ("show_warning_on_bad_config_value", False, "Weather to log warnings if a key is wrong. Certain keys (like the three before this one) let you use an invalid option for some special functionality."),
+            ("embed_color_player", 5614830, "Embed color for player messages (decimal format)"),
+            ("embed_color_join_leave", 3066993, "Embed color for join/leave messages (decimal format)"),
+            ("embed_color_other", 15158332, "Embed color for other messages (decimal format)"),
+            ("embed_title_player", "Chat", "Embed title for player messages; leave blank for no title"),
+            ("embed_title_join_leave", "Server Event", "Embed title for join/leave messages; leave blank for no title"),
+            ("embed_title_other", "Server Notification", "Embed title for other messages; leave blank for no title"),
+            ("embed_footer_text", "Chatrelay", "Footer text for all embeds; leave blank for no footer"),
+            ("embed_avatar_player", True, "Show player avatar in player message embeds"),
+            ("embed_avatar_join_leave", True, "Show player avatar in join/leave embeds"),
+            ("embed_avatar_other", False, "Show avatar in other message embeds"),
         ]
         if cfg_path.exists():
             with open(cfg_path, "r", encoding="utf-8") as f:
@@ -219,20 +229,28 @@ class ChatRelay(Plugin):
             content=self.remove_mentions(self._resolve_to_plaintext(message=message))
         ).execute()
 
-    def _send_as_embed(self, message: str, player: str = ""):
+    def _send_as_embed(self, message: str, category: str, player: str = ""):
         plain = self.remove_mentions(self._resolve_to_plaintext(message=message))
-        embed = DiscordEmbed(description=plain)
+        
+        color = cast(int, self.yaml_config.get(f"embed_color_{category}", 0))
+        title = cast(str, self.yaml_config.get(f"embed_title_{category}", ""))
+        footer = cast(str, self.yaml_config.get("embed_footer_text", ""))
+        show_avatar = cast(bool, self.yaml_config.get(f"embed_avatar_{category}", False))
+        
+        embed = DiscordEmbed(title=title, description=plain, color=color)
+        embed.set_footer(text=footer)
+        
         if player:
             try:
                 response = requests.get(f"https://mcprofile.io/api/v1/bedrock/gamertag/{player}", timeout=5)
                 data = response.json()
                 icon_url = data.get("icon")
-                if icon_url:
-                    embed.set_author(name=player, icon_url=icon_url)
-                else:
-                    embed.set_author(name=player)
+                if show_avatar and icon_url:
+                    embed.set_thumbnail(url=icon_url)
+                embed.set_author(name=player)
             except Exception:
                 embed.set_author(name=player)
+            
         webhook = DiscordWebhook(url=self.webhook_url)
         webhook.add_embed(embed)
         webhook.execute()
@@ -251,7 +269,7 @@ class ChatRelay(Plugin):
                 elif message_type == "plaintext": 
                     self._send_as_plaintext(message=message)
                 elif message_type == "embed":
-                    self._send_as_embed(message=message, player=player)
+                    self._send_as_embed(message=message, category="player", player=player)
                 else:
                     if not self.yaml_config.get("other_messages_type"):
                         self._warn(f'Message "{message}" was not sent because your config has an invalid option.')
@@ -272,7 +290,7 @@ class ChatRelay(Plugin):
                 elif message_type == "plaintext": 
                     self._send_as_plaintext(message=message)
                 elif message_type == "embed":
-                    self._send_as_embed(message=message, player=player)
+                    self._send_as_embed(message=message, category="join_leave", player=player)
                 else:
                     if not self.yaml_config.get("other_messages_type"):
                         self._warn(f'Message "{message}" was not sent because your config has an invalid option.')
@@ -293,7 +311,7 @@ class ChatRelay(Plugin):
                 elif message_type == "plaintext": 
                     self._send_as_plaintext(message=message)
                 elif message_type == "embed":
-                    self._send_as_embed(message=message)
+                    self._send_as_embed(message=message, category="other")
                 else:
                     if not self.yaml_config.get("other_messages_type"):
                         self._warn(f'Message "{message}" was not sent because your config has an invalid option.')

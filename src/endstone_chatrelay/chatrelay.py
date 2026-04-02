@@ -7,6 +7,7 @@ from discord_webhook import DiscordWebhook, DiscordEmbed
 from PIL import Image, ImageDraw, ImageFont
 import re
 import time
+import requests
 from typing import cast
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap 
@@ -210,11 +211,9 @@ class ChatRelay(Plugin):
                 result += leading + wrap + stripped + wrap + trailing
             else:
                 result += text
-        # KILL me
         return result
 
     def _send_as_plaintext(self, message: str):
-        print(message)
         DiscordWebhook(
             url=self.webhook_url,
             content=self.remove_mentions(self._resolve_to_plaintext(message=message))
@@ -224,15 +223,21 @@ class ChatRelay(Plugin):
         plain = self.remove_mentions(self._resolve_to_plaintext(message=message))
         embed = DiscordEmbed(description=plain)
         if player:
-            embed.set_author(name=player, icon_url=f"https://mc-heads.net/avatar/{player}/64")
+            try:
+                response = requests.get(f"https://mcprofile.io/api/v1/bedrock/gamertag/{player}", timeout=5)
+                data = response.json()
+                icon_url = data.get("icon")
+                if icon_url:
+                    embed.set_author(name=player, icon_url=icon_url)
+                else:
+                    embed.set_author(name=player)
+            except Exception:
+                embed.set_author(name=player)
         webhook = DiscordWebhook(url=self.webhook_url)
         webhook.add_embed(embed)
         webhook.execute()
 
     def _warn(self, message: str):
-        """
-        Used because logging must be done on the main thread to be visible.
-        """
         self.server.scheduler.run_task(self, lambda: self.logger.warning(message))
 
     def send_player_message(self, message: str, player: str = ""):
@@ -304,7 +309,6 @@ class ChatRelay(Plugin):
             message = self.server.language.translate(str(message.text), locale=self.server.language.locale, params=message.params) 
         else: 
             message = str(message)
-        # if it's None: return, if it's a translateable: translate into server's locale
         return message
 
 

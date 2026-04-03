@@ -2,3 +2,4 @@
 dist/
 endstone/
 **__pycache__
+bedrock_server/

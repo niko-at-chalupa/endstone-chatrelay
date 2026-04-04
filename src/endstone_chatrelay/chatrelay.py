@@ -13,7 +13,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap 
 
 class ChatRelay(Plugin):
-    api_version = "0.11.3"
+    api_version = "0.11"
 
     def install(self):
         folder = Path(self.data_folder)

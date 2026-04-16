@@ -29,12 +29,13 @@ It preserves minecraft colors and formatting while keeping text readable
 
 1. Take the .whl file from the latest release and put it into the server’s plugins/ folder
 
-2. Start the server once, then close it
+2. Start the server once, then *(optionally)* close it
 - This creates the config file
 
 3. Open plugins/ChatRelay/config.yml and set it like this:
 
 - webhook_url: Your discord webhook URL *("https://discord.com/api/webhooks/...")*
 - font_path: Full path to your font *("/full/path/to/your/font.ttf")* *([the one I used](https://www.dafont.com/minecraft.font))*
+- ...and then set everything else to your liking
 
-4. Start the server again, and it *(should)* work
+4. Start the server again, and it will load. Otherwise, the logs will tell you why it didn't!

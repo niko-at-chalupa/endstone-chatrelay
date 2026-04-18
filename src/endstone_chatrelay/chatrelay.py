@@ -1,5 +1,5 @@
 from endstone.plugin import Plugin
-from endstone.event import event_handler, BroadcastMessageEvent, PlayerDeathEvent, PlayerChatEvent, PlayerJoinEvent, PlayerQuitEvent
+from endstone.event import event_handler, BroadcastMessageEvent, PlayerDeathEvent, PlayerChatEvent, PlayerJoinEvent, PlayerQuitEvent, EventPriority
 from endstone.lang import Translatable
 from pathlib import Path
 import threading
@@ -333,28 +333,27 @@ class ChatRelay(Plugin):
 
 
 
-    @event_handler
+    @event_handler(priority=EventPriority.MONITOR) # type: ignore
     def on_broadcast_message(self, event: BroadcastMessageEvent):
         message = self.resolve_message(event.message)
         self.send_other_message(message)
 
-    @event_handler
+    @event_handler(priority=EventPriority.MONITOR) # type: ignore
     def on_player_death(self, event: PlayerDeathEvent):
         message = self.resolve_message(event.death_message)
         self.send_other_message(message)
 
-    @event_handler
+    @event_handler(priority=EventPriority.MONITOR) # type: ignore
     def on_player_chat(self, event: PlayerChatEvent):
         message = f"<{event.player.name}> {event.message}"
         self.send_player_message(message, player=event.player.name)
 
-
-    @event_handler
+    @event_handler(priority=EventPriority.MONITOR) # type: ignore
     def on_player_join(self, event: PlayerJoinEvent):
         message = self.resolve_message(event.join_message)
         self.send_join_or_leave_message(message, player=event.player.name)
     
-    @event_handler
+    @event_handler(priority=EventPriority.MONITOR) # type: ignore
     def on_player_quit(self, event: PlayerQuitEvent):
         message = self.resolve_message(event.quit_message)
         self.send_join_or_leave_message(message, player=event.player.name)

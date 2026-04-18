@@ -23,8 +23,6 @@ It preserves minecraft colors and formatting while keeping text readable
 
 </details>
 
-<br />
-
 # setup
 
 1. Take the .whl file from the latest release and put it into the server’s plugins/ folder

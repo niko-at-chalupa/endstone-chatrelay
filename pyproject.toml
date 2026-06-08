@@ -12,7 +12,8 @@ authors = [
 dependencies = [
     "discord-webhook",
     "pillow",
-    "ruamel.yaml"
+    "ruamel.yaml",
+    "endstone",
 ]
 [project.entry-points."endstone"]
 chatrelay = "endstone_chatrelay:ChatRelay"

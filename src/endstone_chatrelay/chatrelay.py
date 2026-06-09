@@ -174,22 +174,33 @@ class ChatRelay(Plugin):
 
         self.resolved_fonts = []
         fonts_dir = Path(self.data_folder) / "fonts"
-        for f in self.config.fonts:
-            p = Path(f)
-            if p.exists():
-                self.resolved_fonts.append(str(p.absolute()))
-            else:
-                p_local = fonts_dir / f
-                if p_local.exists():
-                    self.resolved_fonts.append(str(p_local.absolute()))
-                else:
-                    self.logger.error(f"Font not found: {f} (checked absolute path and {fonts_dir})")
-
-        if not self.config.webhook_url:
-            self.logger.error("Chatrelay will NOT function! Fill out `webhook_url` before reloading the plugin.")
-        elif not self.resolved_fonts and any(
+        
+        using_image_mode = any(
             t == "image" for t in [self.config.message_type.player, self.config.message_type.join_leave, self.config.message_type.other]
-        ):
+        )
+
+        if using_image_mode:
+            for f in self.config.fonts:
+                p = Path(f)
+                if p.exists():
+                    self.resolved_fonts.append(str(p.absolute()))
+                else:
+                    p_local = fonts_dir / f
+                    if p_local.exists():
+                        self.resolved_fonts.append(str(p_local.absolute()))
+                    else:
+                        self.logger.error(f"Font not found: {f} (checked absolute path and {fonts_dir})")
+
+        has_webhooks = (
+            self.config.webhook_url
+            or self.config.webhooks.player
+            or self.config.webhooks.join_leave
+            or self.config.webhooks.other
+        )
+
+        if not has_webhooks:
+            self.logger.error("Chatrelay will NOT function! Fill out `webhook_url` or at least one webhook in `webhooks` before reloading the plugin.")
+        elif using_image_mode and not self.resolved_fonts:
             self.logger.error("Chatrelay will NOT function! No valid fonts found but 'image' type is enabled.")
         else:
             self.register_events(self)

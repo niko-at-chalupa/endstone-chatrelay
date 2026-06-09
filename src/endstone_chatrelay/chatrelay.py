@@ -45,6 +45,13 @@ class WebhooksConfig(BaseModel):
     join_leave: list[str] = Field(default_factory=list)
     other: list[str] = Field(default_factory=list)
 
+class ImageRendererConfig(BaseModel):
+    max_width: int = 512
+    max_height: int = 30
+    padding: int = 5
+    length_threshold: int = 100
+    delay: float = 1.0
+
 class ChatRelayConfig(BaseModel):
     webhook_url: str = ""
     webhooks: WebhooksConfig = Field(default_factory=WebhooksConfig)
@@ -52,6 +59,7 @@ class ChatRelayConfig(BaseModel):
     message_type: MessageTypeConfig = Field(default_factory=MessageTypeConfig)
     show_warning_on_bad_config_value: bool = False
     embed: EmbedConfig = Field(default_factory=EmbedConfig)
+    image_renderer: ImageRendererConfig = Field(default_factory=ImageRendererConfig)
 
 class ChatRelay(Plugin):
     api_version = "0.11"
@@ -81,6 +89,11 @@ class ChatRelay(Plugin):
             ("webhooks.join_leave", [], "List of Discord webhook URLs for join/leave messages"),
             ("webhooks.other", [], "List of Discord webhook URLs for other messages"),
             ("fonts", [], "List of font filenames (searched in the 'fonts' folder) or full paths. Supports fallbacks."),
+            ("image_renderer.max_width", 512, "Maximum width of the rendered image"),
+            ("image_renderer.max_height", 30, "Maximum height of the rendered image"),
+            ("image_renderer.padding", 5, "Padding around the text"),
+            ("image_renderer.length_threshold", 100, "Message length threshold to switch to plaintext"),
+            ("image_renderer.delay", 1.0, "Delay in seconds between sending images"),
             ("message_type.player", "image", 'ONLY applies to player messages. Options: image | plaintext | embed.'),
             ("message_type.join_leave", "image", 'ONLY applies to join/leave messages. Options: image | plaintext | embed.'),
             ("message_type.other", "image", 'ONLY applies to other messages (death, broadcast...). Options: image | plaintext | embed.'),
@@ -245,7 +258,7 @@ class ChatRelay(Plugin):
 
     def _send_as_image(self, message: str, category: str):
         webhook_urls = self.get_webhook_urls(category)
-        if len(message) > 100:
+        if len(message) > self.config.image_renderer.length_threshold:
             for url in webhook_urls:
                 DiscordWebhook(
                     url=url,
@@ -255,7 +268,9 @@ class ChatRelay(Plugin):
 
         chunks = self.parse_minecraft(message)
 
-        max_width, max_height, padding = 512, 30, 5
+        max_width = self.config.image_renderer.max_width
+        max_height = self.config.image_renderer.max_height
+        padding = self.config.image_renderer.padding
         
         loaded_fonts = []
         for f_path in self.resolved_fonts:
@@ -349,7 +364,7 @@ class ChatRelay(Plugin):
             except:
                 pass
 
-            time.sleep(1)
+            time.sleep(self.config.image_renderer.delay)
 
     def _resolve_to_plaintext(self, message: str) -> str:
         msg = re.sub(r'[\x00-\x1f\x7f]', '', message)
